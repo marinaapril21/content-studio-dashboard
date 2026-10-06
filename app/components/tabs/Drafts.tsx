@@ -5,6 +5,7 @@ import TabContainer from "../shared/TabContainer";
 import TabHeader from "../shared/TabHeader";
 import EmptyState from "../shared/EmptyState";
 import PasteFromClaude, { stripCodeFences } from "../shared/PasteFromClaude";
+import { parseReelReply, inferDraftTrigger } from "../../../lib/reelReply";
 import CopyPromptButton, { FatPromptPreview } from "../shared/CopyPromptButton";
 import MarkLegacyModal from "../legacy/MarkLegacyModal";
 import {
@@ -66,6 +67,7 @@ const emptyDraft = (): NewDraft => ({
   type: "carousel",
   status: "draft",
   scheduled_for: null,
+  notes: "",
 });
 
 /**
@@ -84,6 +86,7 @@ export default function Drafts() {
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<"all" | DraftStatus>("draft");
   const [view, setView] = useState<ViewMode>("list");
   const [weekOffset, setWeekOffset] = useState(0);
@@ -207,6 +210,7 @@ export default function Drafts() {
   async function createDraft() {
     if (!draft.caption.trim()) return;
     setSaving(true);
+    setSaveError(null);
     try {
       const res = await fetch("/api/data?tab=drafts", {
         method: "POST",
@@ -217,7 +221,11 @@ export default function Drafts() {
         setDraft(emptyDraft());
         setAddOpen(false);
         load();
+      } else {
+        setSaveError("Nacrt nije spremljen. Tvoj tekst je ostao u obrascu. Pokušaj ponovno.");
       }
+    } catch {
+      setSaveError("Spremanje nije uspjelo. Tvoj tekst je ostao u obrascu. Provjeri vezu i pokušaj ponovno.");
     } finally {
       setSaving(false);
     }
@@ -580,12 +588,12 @@ export default function Drafts() {
               />
             </div>
             <span style={{ fontSize: "0.7rem", color: "var(--color-text-dim)", display: "block", marginTop: "0.45rem" }}>
-              Each one builds a fat prompt with your voice rules + winners baked in. Paste into ChatGPT Work, paste the reply back below, hit Apply.
+              Kopiraj prompt u ChatGPT Work. Ovdje zalijepi odgovor, klikni Parse pa Apply. Reel skripta i kadrovi spremit će se odvojeno od opisa objave.
             </span>
           </div>
 
           <PasteFromClaude<ParsedDraftOption[]>
-            label="Paste ChatGPT Work's 3 caption options"
+            label="Zalijepi GPT odgovor (opis ili Reel skripta)"
             parse={parseDraftOptionsReply}
             render={(opts) => (
               <ol style={{ margin: 0, paddingLeft: "1.1rem", display: "grid", gap: "0.55rem" }}>
@@ -594,6 +602,7 @@ export default function Drafts() {
                     <strong style={{ fontFamily: "var(--font-header)" }}>{o.hook}</strong>
                     <span style={{ color: "var(--color-text-dim)", fontSize: "0.72rem" }}>
                       {o.format ?? "·"}
+                      {o.notes ? " · Skripta i kadrovi bit će spremljeni zasebno." : ""}
                     </span>
                   </li>
                 ))}
@@ -609,6 +618,8 @@ export default function Drafts() {
                 ...d,
                 hook: first.hook,
                 caption: first.cta ? `${first.body}\n\n${first.cta}` : first.body,
+                notes: first.notes ?? "",
+                trigger_word: inferDraftTrigger(`${first.hook}\n${first.body}\n${first.cta ?? ""}`, triggers.map(t => t.word)) ?? d.trigger_word,
                 slide_count:
                   first.format && first.format.toLowerCase().includes("carousel")
                     ? Number((first.format.match(/(\d+)/) ?? [])[1] ?? d.slide_count) || d.slide_count
@@ -632,6 +643,18 @@ export default function Drafts() {
             placeholder="Hook (first line, the thing that stops the scroll)"
             style={inputStyle}
           />
+
+          <label style={{ display: "block", marginTop: "0.7rem", fontSize: "0.8rem" }}>
+            Skripta i kadrovi (samo za pripremu)
+            <textarea
+              value={draft.notes ?? ""}
+              onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
+              placeholder="Tekst na ekranu, govor, kadrovi i upute za snimanje."
+              rows={6}
+              style={{ ...inputStyle, resize: "vertical", marginTop: "0.4rem" }}
+            />
+          </label>
+          {saveError && <p role="alert" style={{ color: "#8a3219" }}>{saveError}</p>}
 
           <textarea
             value={draft.caption}
@@ -960,6 +983,13 @@ export default function Drafts() {
             >
               {d.caption}
             </p>
+
+            {d.notes && !isRecycledNotes(d.notes) && (
+              <details style={{ marginBottom: "1rem", fontSize: "0.84rem" }}>
+                <summary style={{ cursor: "pointer", fontWeight: 600 }}>Skripta i kadrovi</summary>
+                <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.55, marginTop: "0.7rem" }}>{d.notes}</p>
+              </details>
+            )}
 
             <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
               {d.status === "draft" && (
@@ -1574,6 +1604,7 @@ type ParsedDraftOption = {
   body: string;
   cta?: string;
   format?: string;
+  notes?: string;
 };
 
 /**
@@ -1596,6 +1627,8 @@ type ParsedDraftOption = {
 function parseDraftOptionsReply(
   raw: string
 ): { ok: true; value: ParsedDraftOption[] } | { ok: false; error: string } {
+  const reel = parseReelReply(raw);
+  if (reel) return reel;
   const body = stripCodeFences(raw);
   // Split into option blocks. Look for "Option N" / "## N" / "**Option N**" /
   // "N." at the start of a line. Fall back to splitting on horizontal rules.
@@ -1632,7 +1665,7 @@ function parseDraftOptionsReply(
     return {
       ok: false,
       error:
-        "Could not find Hook/Body/CTA/Format labels in the reply. Make sure you copied ChatGPT Work's full reply with all 3 options.",
+        "Nisam prepoznala opis ni Reel skriptu. Zalijepi cijeli odgovor: opis s Hook/Body/CTA/Format oznakama ili Reel s FORMAT, kadrovima i CAPTION odjeljkom.",
     };
   }
   return { ok: true, value: options };
