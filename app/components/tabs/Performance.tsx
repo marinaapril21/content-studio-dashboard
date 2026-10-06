@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
 import { ExternalLink } from "lucide-react";
-import config from "../../../config.json";
 import TabContainer from "../shared/TabContainer";
 import TabHeader from "../shared/TabHeader";
 import EmptyState from "../shared/EmptyState";
@@ -100,7 +99,7 @@ export default function Performance() {
     {
       label: "Followers",
       value: data?.followers != null ? data.followers.toLocaleString() : "—",
-      sub: config.instagramHandle ? `@${config.instagramHandle}` : undefined,
+      sub: data?.followers == null ? "Follower count not provided" : undefined,
     },
     {
       label: "Avg likes",
