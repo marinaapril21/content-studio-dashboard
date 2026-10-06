@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { draftToRecord, draftFromRecord } from "../../../lib/draftRecord";
 
 /**
  * Single read/write API for every tab in the dashboard.
@@ -139,7 +140,7 @@ export async function GET(req: NextRequest) {
         .from("drafts")
         .select("*")
         .order("created_at", { ascending: false });
-      return NextResponse.json({ data: data ?? [] });
+      return NextResponse.json({ data: (data ?? []).map(draftFromRecord) });
     }
 
     if (tab === "intel") {
@@ -224,7 +225,7 @@ export async function POST(req: NextRequest) {
     }
     const { data, error } = await supabase
       .from("drafts")
-      .insert([{ ...body, status: body.status ?? "draft" }])
+      .insert([{ ...draftToRecord(body), status: body.status ?? "draft" }])
       .select()
       .single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
