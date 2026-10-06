@@ -4,20 +4,23 @@ import { ExternalLink } from "lucide-react";
 import TabContainer from "../shared/TabContainer";
 import TabHeader from "../shared/TabHeader";
 import EmptyState from "../shared/EmptyState";
+import PasteFromClaude, { stripCodeFences } from "../shared/PasteFromClaude";
+import CopyPromptButton from "../shared/CopyPromptButton";
+import { buildCompetitorPrompt } from "../../../lib/promptBuilders";
 import { fetchEffectiveSettings } from "../../../lib/settings";
 
 type TrendingPost = {
   hook: string;
   hook_type?: string;
   type: string;
-  likes: number;
-  comments: number;
+  likes: number | null;
+  comments: number | null;
   views?: number;
   url?: string;
   timestamp?: string;
 };
 
-type TrendingHook = { hook: string; hook_type?: string; engagement: number };
+type TrendingHook = { hook: string; hook_type?: string; engagement: number; note?: string };
 
 type CompData = {
   handle: string;
@@ -27,6 +30,7 @@ type CompData = {
   trending_formats?: Record<string, number>;
   best_hook_type?: string | null;
   best_format?: string | null;
+  analysis?: { sample_size?: number; best_hook_types?: string[]; recurring_topics?: string[]; format_notes?: string; replicable?: string; limitations?: string };
 };
 
 function shortDate(ts?: string): string {
@@ -53,6 +57,8 @@ export default function Intel() {
   const [active, setActive] = useState<string>("");
   const [data, setData] = useState<CompData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -97,6 +103,18 @@ export default function Intel() {
 
   const hasCompetitors = competitors.length > 0;
   const hasPosts = (data?.top_posts ?? []).length > 0;
+  async function saveAnalysis(value: { competitors: Array<{ handle: string }> }) {
+    if (saving) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const res = await fetch("/api/data?tab=intel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(value) });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error ?? "Could not save analysis");
+      load(active);
+    } catch (e) { setSaveError((e as Error).message); }
+    finally { setSaving(false); }
+  }
 
   return (
     <TabContainer>
@@ -116,6 +134,23 @@ export default function Intel() {
 
       {hasCompetitors && (
         <>
+          <div style={{ marginBottom: "1rem" }}>
+            <CopyPromptButton label="Copy competitor analysis prompt" buildPrompt={buildCompetitorPrompt} />
+            <PasteFromClaude
+              label="Paste ChatGPT Work's competitor analysis"
+              parse={(raw) => {
+                try {
+                  const value = JSON.parse(stripCodeFences(raw));
+                  if (!Array.isArray(value?.competitors) || !value.competitors.length || value.competitors.some((r: { handle?: string }) => !r?.handle)) return { ok: false, error: "Expected a competitors array with a handle for each report." };
+                  return { ok: true, value };
+                } catch { return { ok: false, error: "Paste the full JSON response." }; }
+              }}
+              render={(value: { competitors: Array<{ handle: string }> }) => <p>{value.competitors.map(r => `@${r.handle}`).join(", ")}</p>}
+              onApply={saveAnalysis}
+            />
+            {saving && <p>Saving analysis...</p>}
+            {saveError && <p role="alert">{saveError}</p>}
+          </div>
           {/* Handle tabs */}
           <div style={{ display: "flex", gap: "0.4rem", marginBottom: "1.5rem", flexWrap: "wrap" }}>
             {competitors.map((h) => {
@@ -160,6 +195,17 @@ export default function Intel() {
 
           {!loading && hasPosts && (
             <>
+              {data?.analysis && <section style={{ marginBottom: "1.5rem", padding: "1rem", background: "#fff", borderRadius: "10px" }}>
+                <h2>Analiza profila</h2>
+                <p>{data.analysis.sample_size} prikupljenih objava</p>
+                <h3>Teme koje se ponavljaju</h3>
+                <ul>{data.analysis.recurring_topics?.map(t => <li key={t}>{t}</li>)}</ul>
+                <p>{data.analysis.format_notes}</p>
+                <h3>Što možeš primijeniti</h3>
+                <p>{data.analysis.replicable}</p>
+                <p>{data.analysis.limitations}</p>
+                <small>Rangiranje koristi dostupne lajkove, komentare i preglede. Nedostupne metrike nisu nula.</small>
+              </section>}
               {/* Summary cards */}
               <div
                 style={{
@@ -213,6 +259,7 @@ export default function Intel() {
                             </span>
                           )}
                           <span style={{ fontSize: "0.85rem" }}>&ldquo;{h.hook.slice(0, 140)}&rdquo;</span>
+                          {h.note && <p>{h.note}</p>}
                         </div>
                         <span
                           style={{
@@ -273,7 +320,7 @@ export default function Intel() {
                       }}
                     >
                       <span>
-                        {post.likes.toLocaleString()} likes · {post.comments} comments
+                        {post.likes == null ? "Likes unavailable" : `${post.likes.toLocaleString()} likes`} · {post.comments == null ? "Comments unavailable" : `${post.comments} comments`}
                         {post.timestamp && (
                           <span style={{ color: "var(--color-taupe)", marginLeft: "0.5rem" }}>
                             · {shortDate(post.timestamp)}

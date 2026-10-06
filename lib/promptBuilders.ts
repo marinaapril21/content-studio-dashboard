@@ -315,19 +315,14 @@ For each competitor handle, surface:
 
 ## Output
 
-Return one block per handle, separated by blank lines. Match this format exactly:
+Return one JSON object with a competitors array, one report per handle.
+Use only real post IDs from DATA. Select the top 10 posts in engagement order and 3 to 5 distinct trending hooks.
+The dashboard resolves IDs to original hooks, metrics and links, so do not copy or invent metrics.
+Null metrics mean unknown, never zero; label incomplete rankings as provisional.
+Describe only captions and known formats, never unseen video scenes or carousel designs.
 
-\`\`\`
-@handle
-  best hook types: contrarian, callout
-  best formats: 5-slide carousel, talking-head reel
-  recurring topics: pricing nervous system, sold-out launches, post-baby business identity
-  trending hooks (verbatim):
-    - "If your offer is not selling, your hook is lying about it."
-    - "Stop pricing for your nervous system."
-    - "..."
-  replicable: opening with a contrarian claim against the creator's own past beliefs.
-\`\`\`
+Schema:
+{"competitors":[{"handle":"handle_without_at","best_hook_type":"promise","best_format":"reel","analysis":{"sample_size":30,"best_hook_types":["promise"],"recurring_topics":["specific topic"],"format_notes":"What the known formats show","replicable":"A specific principle the creator can adapt","limitations":"Missing metrics or limited evidence"},"top_posts":[{"id":"actual-post-id","hook_type":"promise"}],"trending_hooks":[{"id":"actual-post-id","hook_type":"promise","note":"Why the original hook works"}]}]}
 
 ## Forbidden
 

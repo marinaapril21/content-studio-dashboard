@@ -218,6 +218,47 @@ export async function POST(req: NextRequest) {
   const tab = req.nextUrl.searchParams.get("tab");
   if (!supabase) return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
 
+  if (tab === "intel") {
+    const body = await req.json().catch(() => null);
+    const reports = body?.competitors;
+    if (!Array.isArray(reports) || reports.length < 1 || reports.length > 5 || JSON.stringify(body).length > 100000) {
+      return NextResponse.json({ error: "Expected 1 to 5 competitor reports." }, { status: 400 });
+    }
+    const { data: settings } = await supabase.from("settings").select("competitors").eq("singleton", true).maybeSingle();
+    const allowed = new Set((settings?.competitors ?? []).map((h: string) => h.replace(/^@/, "").toLowerCase()));
+    const types = new Set(["contrarian", "callout", "promise", "curiosity-gap", "numbered-list", "story-open", "confession", "stat-shock", "question"]);
+    const text = (v: unknown, n = 1500) => typeof v === "string" ? v.trim().slice(0, n) : "";
+    const list = (v: unknown) => Array.isArray(v) ? v.slice(0, 8).map(x => text(x, 300)).filter(Boolean) : [];
+    const rows = [];
+    const seen = new Set<string>();
+    for (const report of reports) {
+      const handle = text(report?.handle, 80).replace(/^@/, "").toLowerCase();
+      if (!allowed.has(handle) || seen.has(handle)) return NextResponse.json({ error: "Unknown or repeated handle." }, { status: 400 });
+      seen.add(handle);
+      const { data: posts, error } = await supabase.from("library_posts").select("id,hook,type,likes,comments,views,url,posted_at,scraped_at").eq("source", `@${handle}`).limit(500);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (!posts?.length) return NextResponse.json({ error: `No collected posts for @${handle}.` }, { status: 400 });
+      const byId = new Map(posts.map(p => [p.id, p]));
+      const top: Array<{ id: string; hook_type: string }> = Array.isArray(report.top_posts) ? report.top_posts.slice(0, 10) : [];
+      const hooks: Array<{ id: string; hook_type: string; note?: string }> = Array.isArray(report.trending_hooks) ? report.trending_hooks.slice(0, 5) : [];
+      if (!top.length || [...top, ...hooks].some(p => !p || !byId.has(p.id))) return NextResponse.json({ error: "Analysis contains an unknown post ID." }, { status: 400 });
+      const a = report.analysis ?? {};
+      rows.push({
+        handle,
+        scraped_at: posts.map(p => p.scraped_at).filter(Boolean).sort().at(-1),
+        best_hook_type: types.has(report.best_hook_type) ? report.best_hook_type : null,
+        best_format: ["reel", "carousel", "image", "story"].includes(report.best_format) ? report.best_format : null,
+        top_posts: top.map(p => { const q = byId.get(p.id)!; return { ...q, type: String(q.type ?? "image").toLowerCase(), timestamp: q.posted_at, hook_type: types.has(p.hook_type) ? p.hook_type : null }; }),
+        trending_hooks: hooks.map(p => { const q = byId.get(p.id)!; return { id: q.id, hook: q.hook, hook_type: types.has(p.hook_type) ? p.hook_type : null, engagement: Math.round((q.likes ?? 0) + 4 * (q.comments ?? 0) + 0.05 * (q.views ?? 0)), note: text(p.note), url: q.url }; }),
+        trending_formats: posts.reduce((acc: Record<string, number>, p) => { const format = String(p.type ?? "unknown").toLowerCase(); acc[format] = (acc[format] ?? 0) + 1; return acc; }, {}),
+        analysis: { sample_size: posts.length, best_hook_types: list(a.best_hook_types).filter(t => types.has(t)), recurring_topics: list(a.recurring_topics), format_notes: text(a.format_notes), replicable: text(a.replicable), limitations: text(a.limitations) },
+      });
+    }
+    const { data, error } = await supabase.from("competitors").insert(rows).select("handle");
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ data });
+  }
+
   if (tab === "drafts") {
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
     if (!body.caption) {
