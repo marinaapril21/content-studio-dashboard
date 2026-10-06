@@ -31,9 +31,9 @@ type VaultPost = {
   hook?: string;
   pillar?: string;
   hook_type?: string;
-  likes: number;
-  comments: number;
-  views?: number;
+  likes: number | null;
+  comments: number | null;
+  views?: number | null;
   url?: string;
   posted_at?: string;
 };
@@ -115,7 +115,7 @@ async function fetchPerformance(): Promise<unknown> {
 function topSelf(posts: VaultPost[], n = 30): VaultPost[] {
   return posts
     .filter((p) => p.source === "self")
-    .sort((a, b) => (b.likes + 4 * b.comments) - (a.likes + 4 * a.comments))
+    .sort((a, b) => ((b.likes ?? 0) + 4 * (b.comments ?? 0)) - ((a.likes ?? 0) + 4 * (a.comments ?? 0)))
     .slice(0, n)
     .map((p) => ({
       ...p,

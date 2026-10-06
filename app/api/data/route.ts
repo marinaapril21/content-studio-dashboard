@@ -157,6 +157,8 @@ export async function GET(req: NextRequest) {
     }
 
     if (tab === "vault") {
+      const { data: settings } = await supabase.from('settings')
+        .select('instagram_handle').eq('singleton', true).maybeSingle();
       const { data } = await supabase
         .from("library_posts")
         .select("*")
@@ -172,7 +174,14 @@ export async function GET(req: NextRequest) {
 
       return NextResponse.json({
         data: {
-          posts: data ?? [],
+          posts: (data ?? []).map(({ raw, ...post }) => ({
+            ...post,
+            source: post.source === 'self' ? 'self' : 'competitor',
+            handle: post.source === 'self'
+              ? settings?.instagram_handle ?? raw?.ownerUsername ?? ''
+              : String(post.source).replace(/^@/, ''),
+            type: String(post.type ?? 'image').toLowerCase(),
+          })),
           scraped_at: meta?.scraped_at ?? null,
         },
       });

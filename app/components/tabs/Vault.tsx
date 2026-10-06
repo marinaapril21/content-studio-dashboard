@@ -22,9 +22,9 @@ type VaultPost = {
   hook?: string;
   hook_type?: string;
   pillar?: string;
-  likes: number;
-  comments: number;
-  views?: number;
+  likes: number | null;
+  comments: number | null;
+  views?: number | null;
   url?: string;
   posted_at?: string;
   scraped_at?: string;
@@ -465,8 +465,8 @@ export default function Vault() {
                   }}
                 >
                   <span>
-                    {p.likes.toLocaleString()} likes
-                    {p.views ? ` · ${p.views.toLocaleString()} views` : ""} · {p.comments} comments
+                    {p.likes == null ? 'Likes unavailable' : `${p.likes.toLocaleString()} likes`}
+                    {p.views != null ? ` · ${p.views.toLocaleString()} views` : ""} · {p.comments == null ? 'Comments unavailable' : `${p.comments} comments`}
                   </span>
                   <div style={{ display: "inline-flex", gap: "0.85rem", alignItems: "center" }}>
                     <button
