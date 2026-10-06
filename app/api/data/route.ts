@@ -288,9 +288,9 @@ export async function POST(req: NextRequest) {
       hook_type?: string;
       pillar?: string;
       type: "carousel" | "reel" | "image" | "story";
-      likes: number;
-      comments: number;
-      views?: number;
+      likes: number | null;
+      comments: number | null;
+      views?: number | null;
       url?: string;
       posted_at?: string;
     };
@@ -306,9 +306,10 @@ export async function POST(req: NextRequest) {
           const t = typeof o.type === "string" ? o.type : "image";
           const type: SafeTopPost["type"] =
             t === "carousel" || t === "reel" || t === "story" ? t : "image";
-          const num = (v: unknown): number => {
+          const num = (v: unknown): number | null => {
+            if (v === null || v === undefined || v === "") return null;
             const n = typeof v === "number" ? v : Number(v);
-            return Number.isFinite(n) ? Math.max(0, Math.round(n)) : 0;
+            return Number.isFinite(n) ? Math.max(0, Math.round(n)) : null;
           };
           return {
             id,

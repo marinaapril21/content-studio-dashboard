@@ -15,8 +15,8 @@ type TopPost = {
   hook_type?: string;
   pillar?: string;
   type: "carousel" | "reel" | "image" | "story";
-  likes: number;
-  comments: number;
+  likes: number | null;
+  comments: number | null;
   views?: number;
   url?: string;
   posted_at?: string;
@@ -105,7 +105,7 @@ export default function Performance() {
     {
       label: "Avg likes",
       value: data?.avg_likes != null ? data.avg_likes.toLocaleString() : "—",
-      sub: "last 30 posts",
+      sub: "available likes in the analysed sample",
     },
     {
       label: "Best pillar",
@@ -121,7 +121,7 @@ export default function Performance() {
     <TabContainer>
       <TabHeader
         title="Performance"
-        subtitle="What's actually working. Top posts, hooks, and pillars sorted by engagement."
+        subtitle="Top posts, hooks, and pillars by available engagement. Rankings are provisional when metrics are missing."
         scrapedAt={data?.scraped_at}
         onScrapeComplete={load}
       />
@@ -290,8 +290,8 @@ export default function Performance() {
                   }}
                 >
                   <span>
-                    {p.likes.toLocaleString()} likes
-                    {p.views ? ` · ${p.views.toLocaleString()} views` : ""} · {p.comments} comments
+                    {p.likes == null ? "Likes unavailable" : `${p.likes.toLocaleString()} likes`}
+                    {p.views != null ? ` · ${p.views.toLocaleString()} views` : ""} · {p.comments == null ? "Comments unavailable" : `${p.comments} comments`}
                   </span>
                   {p.url && (
                     <a
@@ -386,8 +386,8 @@ function parsePerformanceReply(
             const o = p as Record<string, unknown>;
             const id = typeof o.id === "string" ? o.id : "";
             if (!id) return null;
-            const likes = toNum(o.likes) ?? 0;
-            const comments = toNum(o.comments) ?? 0;
+            const likes = toNum(o.likes);
+            const comments = toNum(o.comments);
             const views = toNum(o.views);
             const type = typeof o.type === "string" ? o.type : "image";
             const validType: TopPost["type"] =
@@ -406,8 +406,8 @@ function parsePerformanceReply(
               hook_type: typeof o.hook_type === "string" ? o.hook_type : undefined,
               pillar: typeof o.pillar === "string" ? o.pillar : undefined,
               type: validType,
-              likes: Math.max(0, Math.round(likes)),
-              comments: Math.max(0, Math.round(comments)),
+              likes: likes === null ? null : Math.max(0, Math.round(likes)),
+              comments: comments === null ? null : Math.max(0, Math.round(comments)),
               views: views !== null ? Math.max(0, Math.round(views)) : undefined,
               url: typeof o.url === "string" ? o.url : undefined,
               posted_at:
