@@ -507,15 +507,17 @@ export default function Settings() {
       <section style={sectionStyle}>
         <h2 style={h2Style}>Apify scraper</h2>
         <p style={paragraphStyle}>
-          Your Apify token lives in your Vercel project as the
+          Your Apify token lives in your Supabase project as the
           <code style={codeStyle}>APIFY_TOKEN</code> environment variable, used
           by the Supabase Edge Function. It is never sent to the browser.
         </p>
         <p style={paragraphStyle}>
-          To rotate or change it, open Vercel
-          <span style={dotStyle}>·</span> Project Settings
-          <span style={dotStyle}>·</span> Environment Variables, update
-          <code style={codeStyle}>APIFY_TOKEN</code>, then redeploy.
+          To change it, open Supabase
+          <span style={dotStyle}>·</span> Edge Functions
+          <span style={dotStyle}>·</span> Secrets and update
+          <code style={codeStyle}>APIFY_TOKEN</code>.
+          Each run checks the last 90 days, up to 300 posts per profile,
+          with an Apify spending cap of $1 for the whole run.
         </p>
       </section>
 

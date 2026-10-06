@@ -33,12 +33,24 @@ export default function ScrapeNowButton({ onComplete, mode = "all", disabled = f
     setRunning(true);
     setError(null);
     try {
-      const res = await fetch("/api/scrape", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode }),
-      });
-      const result = (await res.json()) as { ok?: boolean; errors?: string[] };
+      type Result = { ok?: boolean; status?: string; jobId?: string; errors?: string[] };
+      const request = async (jobId?: string): Promise<Result> => {
+        const res = await fetch("/api/scrape", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mode, jobId }),
+        });
+        return res.json();
+      };
+      let result = await request();
+      const deadline = Date.now() + 7 * 60 * 1000;
+      while (result.ok && result.status === 'running' && Date.now() < deadline) {
+        await new Promise(resolve => setTimeout(resolve, 4000));
+        result = await request(result.jobId);
+      }
+      if (result.ok && result.status === 'running') {
+        setError('Still running. Click again to resume checking the same run.');
+        return;
+      }
       if (!result.ok) {
         setError((result.errors ?? ["Scrape failed"]).join(", "));
       } else {
