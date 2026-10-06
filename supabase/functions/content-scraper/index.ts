@@ -75,9 +75,12 @@ async function poll(job: Job) {
 }
 Deno.serve(async (req: Request) => {
   if (req.method !== 'POST') return reply({ ok: false, errors: ['Method not allowed.'] }, 405);
-  if (!env('FUNCTION_SECRET') || req.headers.get('x-function-secret') !== env('FUNCTION_SECRET') ||
-      req.headers.get('authorization') !== `Bearer ${env('SUPABASE_SERVICE_ROLE_KEY')}`)
+  if (req.headers.get('authorization') !== `Bearer ${env('SUPABASE_SERVICE_ROLE_KEY').trim()}`)
     return reply({ ok: false, errors: ['Unauthorized.'] }, 401);
+  if (!env('FUNCTION_SECRET').trim())
+    return reply({ ok: false, errors: ['FUNCTION_SECRET is missing in Supabase.'] }, 503);
+  if (req.headers.get('x-function-secret')?.trim() !== env('FUNCTION_SECRET').trim())
+    return reply({ ok: false, errors: ['FUNCTION_SECRET differs between Vercel and Supabase. Save the same value in both and redeploy Vercel.'] }, 401);
   if (!env('APIFY_TOKEN')) return reply({ ok: false, errors: ['Add APIFY_TOKEN in Supabase Edge Function secrets.'] }, 503);
   try {
     const body = await req.json();
