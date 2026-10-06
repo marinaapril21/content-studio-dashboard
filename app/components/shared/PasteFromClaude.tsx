@@ -6,13 +6,13 @@ import { ClipboardPaste, Check, AlertTriangle, X } from "lucide-react";
  * PasteFromClaude.
  *
  * The "close the loop" component. Customer copies the prompt, pastes into
- * claude.ai, gets back JSON (or Markdown for the caption case). They paste
+ * ChatGPT Work, gets back JSON (or Markdown for the caption case). They paste
  * that reply into this textarea, hit Parse, see what was extracted, and hit
  * Apply to populate the editor above with the parsed values.
  *
  * Generic over the parser's output type T. The editor passes:
  *   - parse: (text: string) -> { ok: true; value: T } | { ok: false; error: string }
- *     A pure function that accepts Claude's raw reply and returns either the
+ *     A pure function that accepts ChatGPT Work's raw reply and returns either the
  *     parsed value or a human-readable error. Use this hook to strip code
  *     fences, validate the schema, and coerce field types.
  *   - render: (value: T) -> ReactNode (optional)
@@ -20,7 +20,7 @@ import { ClipboardPaste, Check, AlertTriangle, X } from "lucide-react";
  *   - onApply: (value: T) -> void
  *     Editor populates its state from this.
  *   - label: string
- *     The collapsible button label ("Paste Claude's JSON", "Paste Claude's reply").
+ *     The collapsible button label ("Paste ChatGPT Work's JSON", "Paste ChatGPT Work's reply").
  *
  * Why one component, not 4 copies: the parse/preview/apply flow is identical
  * across pillars / voice / hooks / draft. Only the schema differs. Keeping it
@@ -28,7 +28,7 @@ import { ClipboardPaste, Check, AlertTriangle, X } from "lucide-react";
  * in every editor at once.
  */
 export default function PasteFromClaude<T>({
-  label = "Paste Claude's reply",
+  label = "Paste ChatGPT Work's reply",
   parse,
   render,
   onApply,
@@ -46,7 +46,7 @@ export default function PasteFromClaude<T>({
   function handleParse() {
     const trimmed = text.trim();
     if (!trimmed) {
-      setError("Paste the reply Claude gave you first.");
+      setError("Paste the reply ChatGPT Work gave you first.");
       setParsed(null);
       return;
     }
@@ -154,7 +154,7 @@ export default function PasteFromClaude<T>({
           setParsed(null);
           setError(null);
         }}
-        placeholder="Paste exactly what Claude returned. The parser will strip code fences automatically."
+        placeholder="Paste exactly what ChatGPT Work returned. The parser will strip code fences automatically."
         rows={8}
         style={{
           width: "100%",
@@ -279,7 +279,7 @@ export default function PasteFromClaude<T>({
 /**
  * stripCodeFences.
  *
- * Claude wraps its JSON reply in ```json … ``` about 80% of the time.
+ * ChatGPT Work wraps its JSON reply in ```json … ``` about 80% of the time.
  * This util pulls the inner block, ignoring leading prose, the language tag,
  * and surrounding whitespace. Falls back to the raw input if no fence is
  * found.

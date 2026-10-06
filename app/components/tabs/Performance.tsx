@@ -43,9 +43,9 @@ type PerformanceData = {
  *  - Top performing posts (sorted by engagement)
  *  - Pillar and hook breakdown bars
  *
- * Populated by the analyse-winners Claude prompt after a scrape (the user
+ * Populated by the analyse-winners ChatGPT Work prompt after a scrape (the user
  * clicks the in-app button which copies a self-contained prompt + opens
- * claude.ai, then pastes the JSON reply back into a Paste field).
+ * ChatGPT Work, then pastes the JSON reply back into a Paste field).
  */
 export default function Performance() {
   const [data, setData] = useState<PerformanceData | null>(null);
@@ -169,12 +169,12 @@ export default function Performance() {
       {/* "Re-run analysis" Paste widget. Shown whenever a scrape exists so the
           customer can refresh the snapshot after a new scrape without leaving
           the tab. On a fresh install (no posts) the EmptyState below carries
-          its own Claude button + prompt preview, so this widget hides itself
+          its own ChatGPT Work button + prompt preview, so this widget hides itself
           to avoid a confusing double-up. */}
       {!loading && hasPosts && (
         <div style={{ marginBottom: "1.4rem" }}>
           <PasteFromClaude<PerformanceData>
-            label="Re-run analysis with Claude"
+            label="Re-run analysis with ChatGPT Work"
             parse={parsePerformanceReply}
             onApply={applyPerformance}
             render={renderPerformancePreview}
@@ -185,20 +185,20 @@ export default function Performance() {
       {!loading && !hasPosts && (
         <EmptyState
           title="No performance data yet"
-          body="After your first scrape, Claude surfaces your top posts, best hooks and strongest pillar here. Trigger a scrape with the button above, then click the button below to copy the analysis prompt and run it in claude.ai. Paste the JSON reply back and your Performance tab fills in."
+          body="After your first scrape, ChatGPT Work surfaces your top posts, best hooks and strongest pillar here. Trigger a scrape with the button above, then click the button below to copy the analysis prompt and run it in ChatGPT Work. Paste the JSON reply back and your Performance tab fills in."
           claudePrompt={buildPerformanceAnalysisPrompt}
           claudeButtonLabel="Copy analysis prompt"
         />
       )}
 
       {/* Below the EmptyState (no posts yet), give the customer the exact
-          Paste field they will need once Claude replies. Sitting under the
+          Paste field they will need once ChatGPT Work replies. Sitting under the
           EmptyState means the read-prompt → copy-prompt → paste-reply flow
           is one vertical scroll, no tab-switching. */}
       {!loading && !hasPosts && (
         <div style={{ marginTop: "1.4rem", maxWidth: "640px", margin: "1.4rem auto 0" }}>
           <PasteFromClaude<PerformanceData>
-            label="Paste Claude's analysis reply"
+            label="Paste ChatGPT Work's analysis reply"
             parse={parsePerformanceReply}
             onApply={applyPerformance}
             render={renderPerformancePreview}
@@ -320,14 +320,14 @@ export default function Performance() {
 }
 
 /**
- * Parse Claude's analysis reply. The fat prompt
+ * Parse ChatGPT Work's analysis reply. The fat prompt
  * (`buildPerformanceAnalysisPrompt`) asks for a single JSON object matching
  * PerformanceData. Common gotchas this parser absorbs:
  *
- *   - Claude wraps the JSON in ```json``` fences ~80% of the time. stripCodeFences handles that.
- *   - Claude returns numeric strings ("1240") for likes/comments. We coerce.
- *   - Claude returns `null` instead of omitting `followers`. We tolerate both.
- *   - Claude sometimes returns the breakdowns as an object `{ "Pillar": 0.4 }`
+ *   - ChatGPT Work wraps the JSON in ```json``` fences ~80% of the time. stripCodeFences handles that.
+ *   - ChatGPT Work returns numeric strings ("1240") for likes/comments. We coerce.
+ *   - ChatGPT Work returns `null` instead of omitting `followers`. We tolerate both.
+ *   - ChatGPT Work sometimes returns the breakdowns as an object `{ "Pillar": 0.4 }`
  *     instead of the requested array. We convert.
  */
 function parsePerformanceReply(
@@ -434,7 +434,7 @@ function parsePerformanceReply(
       return {
         ok: false,
         error:
-          "Parsed JSON but it contained no top_posts and no breakdowns. Did Claude include the analysis fields from the prompt?",
+          "Parsed JSON but it contained no top_posts and no breakdowns. Did ChatGPT Work include the analysis fields from the prompt?",
       };
     }
 
@@ -452,7 +452,7 @@ function parsePerformanceReply(
       top_posts,
       pillar_breakdown,
       hook_breakdown,
-      // Forward `scraped_at` if Claude echoed it back (the prompt embeds it
+      // Forward `scraped_at` if ChatGPT Work echoed it back (the prompt embeds it
       // in the DATA block). The POST handler validates + stores so the
       // snapshot's timestamp reflects the underlying scrape, not the
       // moment-of-paste.
@@ -465,7 +465,7 @@ function parsePerformanceReply(
   } catch {
     return {
       ok: false,
-      error: "Could not parse as JSON. Make sure you copied Claude's full reply, including the { and }.",
+      error: "Could not parse as JSON. Make sure you copied ChatGPT Work's full reply, including the { and }.",
     };
   }
 }

@@ -40,8 +40,8 @@ function shortDate(ts?: string): string {
  * Intel tab.
  *
  * Up to 5 competitor handles from config.json. For each: top hooks, top posts,
- * format mix. Filled by the competitor-patterns Claude prompt after a scrape
- * (in-app button → claude.ai → paste reply back).
+ * format mix. Filled by the competitor-patterns ChatGPT Work prompt after a scrape
+ * (in-app button → ChatGPT Work → paste reply back).
  */
 export default function Intel() {
   // Competitors used to read straight from config.json. Now they come from

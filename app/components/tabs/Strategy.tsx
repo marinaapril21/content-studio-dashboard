@@ -64,8 +64,8 @@ type EditSection = "pillars" | "voice" | "hooks" | "campaigns" | "ica" | null;
  * Each section has its own inline edit mode. Saves PATCH the most recent
  * strategy row, or POST a brand-new one on first install.
  *
- * No CLI, no file paths. Every section that needs Claude has its own button
- * that builds a prompt with the user's data baked in and opens claude.ai.
+ * No CLI, no file paths. Every section that needs ChatGPT Work has its own button
+ * that builds a prompt with the user's data baked in and opens ChatGPT Work.
  */
 export default function Strategy() {
   const [data, setData] = useState<StrategyData | null>(null);
@@ -183,7 +183,7 @@ export default function Strategy() {
     <TabContainer>
       <TabHeader
         title="Strategy"
-        subtitle="Your content pillars, voice rules, and current campaigns. Edit them by hand here, or click any section's empty-state button to copy a prompt for claude.ai and paste the JSON reply back."
+        subtitle="Your content pillars, voice rules, and current campaigns. Edit them by hand here, or click any section's empty-state button to copy a prompt for ChatGPT Work and paste the JSON reply back."
         scrapedAt={data?.scraped_at}
         onScrapeComplete={load}
         scrapeDisabled={editing !== null}
@@ -200,9 +200,9 @@ export default function Strategy() {
       {!loading && !hasAny && editing === null && (
         <EmptyState
           title="No strategy mapped yet"
-          body="Click below to copy a prompt pre-filled with your last 30 posts. claude.ai opens in a new tab. Paste, wait for the JSON reply, paste it back here. Or skip Claude and fill the fields by hand with the second button."
+          body="Click below to copy a prompt pre-filled with your last 30 posts. Paste the copied prompt into your ChatGPT Work chat. Paste, wait for the JSON reply, paste it back here. Or skip ChatGPT Work and fill the fields by hand with the second button."
           claudePrompt={buildPillarsPrompt}
-          claudeButtonLabel="Get pillars from Claude"
+          claudeButtonLabel="Get pillars from ChatGPT Work"
           actionLabel="Start by hand"
           onAction={() => setEditing("pillars")}
         />
@@ -262,9 +262,9 @@ export default function Strategy() {
               </div>
             ) : (
               <InlineEmptyWithClaude
-                body="Click Edit to add your first pillar by hand, or copy a prompt for claude.ai and paste the JSON reply back."
+                body="Click Edit to add your first pillar by hand, or copy a prompt for ChatGPT Work and paste the JSON reply back."
                 buildPrompt={buildPillarsPrompt}
-                claudeLabel="Get pillars from Claude"
+                claudeLabel="Get pillars from ChatGPT Work"
               />
             )}
           </Section>
@@ -410,9 +410,9 @@ export default function Strategy() {
               </div>
             ) : (
               <InlineEmptyWithClaude
-                body="Click Edit to write your voice rules by hand, or copy a prompt for claude.ai and paste the JSON reply back."
+                body="Click Edit to write your voice rules by hand, or copy a prompt for ChatGPT Work and paste the JSON reply back."
                 buildPrompt={buildVoicePrompt}
-                claudeLabel="Get voice rules from Claude"
+                claudeLabel="Get voice rules from ChatGPT Work"
               />
             )}
           </Section>
@@ -461,9 +461,9 @@ export default function Strategy() {
               </div>
             ) : (
               <InlineEmptyWithClaude
-                body="Click Edit to log a hook by hand, or copy a prompt for claude.ai and paste the JSON reply back."
+                body="Click Edit to log a hook by hand, or copy a prompt for ChatGPT Work and paste the JSON reply back."
                 buildPrompt={buildHooksPrompt}
-                claudeLabel="Get hooks from Claude"
+                claudeLabel="Get hooks from ChatGPT Work"
               />
             )}
           </Section>
@@ -633,7 +633,7 @@ function PillarsEditor({
   const remove = (i: number) => setItems(items.filter((_, idx) => idx !== i));
   const add = () => setItems([...items, { name: "", description: "" }]);
 
-  // Preserve color + share when Claude returned them so pillar cards keep
+  // Preserve color + share when ChatGPT Work returned them so pillar cards keep
   // their distinct hue + percentage. We only strip empty fields, not typed
   // ones — losing color/share here was the bug.
   const cleaned = items
@@ -648,7 +648,7 @@ function PillarsEditor({
   return (
     <EditorShell saving={saving} onCancel={onCancel} onSave={() => onSave(cleaned)} disabled={cleaned.length === 0}>
       <PasteFromClaude<Pillar[]>
-        label="Paste Claude's pillars JSON"
+        label="Paste ChatGPT Work's pillars JSON"
         parse={parsePillarsReply}
         render={(arr) => (
           <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: "0.35rem" }}>
@@ -766,7 +766,7 @@ function VoiceEditor({
       }
     >
       <PasteFromClaude<Voice>
-        label="Paste Claude's voice JSON"
+        label="Paste ChatGPT Work's voice JSON"
         parse={parseVoiceReply}
         render={(v) => (
           <div style={{ display: "grid", gap: "0.3rem" }}>
@@ -855,7 +855,7 @@ function HooksEditor({
       disabled={cleaned.length === 0}
     >
       <PasteFromClaude<Hook[]>
-        label="Paste Claude's hooks JSON"
+        label="Paste ChatGPT Work's hooks JSON"
         parse={parseHooksReply}
         render={(arr) => (
           <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: "0.3rem" }}>
@@ -1168,8 +1168,8 @@ function InlineEmpty({ body }: { body: string }) {
  * InlineEmptyWithClaude.
  *
  * The per-section empty state. Same dashed cream block as InlineEmpty, but
- * includes a "Get X from Claude" button that copies the section-specific
- * prompt and opens claude.ai. Customer then comes back, hits Edit, and
+ * includes a "Get X from ChatGPT Work" button that copies the section-specific
+ * prompt and opens ChatGPT Work. Customer then comes back, hits Edit, and
  * pastes the JSON via the editor's PasteFromClaude block.
  *
  * The CopyPromptButton lives inline next to the body copy so the customer
@@ -1198,7 +1198,7 @@ function InlineEmptyWithClaude({
       }}
     >
       <p style={{ fontSize: "0.82rem", color: "var(--color-text-dim)", margin: 0 }}>{body}</p>
-      {/* Prompt FIRST — the customer reads what would go into Claude before
+      {/* Prompt FIRST — the customer reads what would go into ChatGPT Work before
           the button. Thessa's UX note: "de prompt boven de claude knop, dat
           is de volgorde waarin ze ook werkt". Opens by default.
           Negative marginTop neutralizes FatPromptPreview's built-in 0.55rem
@@ -1350,14 +1350,14 @@ const addRowBtn: React.CSSProperties = {
   alignItems: "center",
 };
 
-/* ─────────── Claude-reply parsers ───────────
+/* ─────────── ChatGPT Work-reply parsers ───────────
  *
- * Each parser accepts whatever Claude returned (with or without ```json```
+ * Each parser accepts whatever ChatGPT Work returned (with or without ```json```
  * fences, with or without prose surrounding the JSON), and returns a
  * discriminated union: { ok: true; value } or { ok: false; error }.
  *
  * Errors must be short and actionable so the customer can fix their paste
- * without reading docs. The most common failure is: Claude wrapped the JSON
+ * without reading docs. The most common failure is: ChatGPT Work wrapped the JSON
  * in prose ("Here are your pillars: …") — stripCodeFences handles that.
  */
 
@@ -1389,7 +1389,7 @@ function parsePillarsReply(raw: string): { ok: true; value: Pillar[] } | { ok: f
   } catch (e) {
     return {
       ok: false,
-      error: "Could not parse as JSON. Make sure you copied Claude's full reply, including the [ and ].",
+      error: "Could not parse as JSON. Make sure you copied ChatGPT Work's full reply, including the [ and ].",
     };
   }
 }
@@ -1458,7 +1458,7 @@ function parseHooksReply(raw: string): { ok: true; value: Hook[] } | { ok: false
   } catch {
     return {
       ok: false,
-      error: "Could not parse as JSON. Make sure you copied Claude's full reply, including the [ and ].",
+      error: "Could not parse as JSON. Make sure you copied ChatGPT Work's full reply, including the [ and ].",
     };
   }
 }

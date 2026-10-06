@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
       // OBJECTS keyed by label, the UI renders `pillar_breakdown` /
       // `hook_breakdown` as ARRAYS of `{label, share}`. Normalize here so the
       // UI never has to nil-check or shape-check, and so the same row written
-      // by either the legacy CLI prompt (object shape) or the in-app Claude
+      // by either the legacy CLI prompt (object shape) or the in-app ChatGPT Work
       // analysis (array shape, see POST below) renders correctly.
       const toBreakdown = (raw: unknown): Array<{ label: string; share: number }> => {
         if (Array.isArray(raw)) {
@@ -223,11 +223,11 @@ export async function POST(req: NextRequest) {
   }
 
   if (tab === "performance") {
-    // In-app Claude analysis path. The customer clicks "Run analysis with
-    // Claude" on the Performance tab → copies a fat prompt seeded with their
-    // vault posts + strategy → pastes Claude's JSON reply into the Paste
+    // In-app ChatGPT Work analysis path. The customer clicks "Run analysis with
+    // ChatGPT Work" on the Performance tab → copies a fat prompt seeded with their
+    // vault posts + strategy → pastes ChatGPT Work's JSON reply into the Paste
     // widget → the editor POSTs that JSON here. We insert a NEW row (vs
-    // upsert) so the Performance table keeps a history Claude or future
+    // upsert) so the Performance table keeps a history ChatGPT Work or future
     // chart code can trend across.
     //
     // Performance was deliberately excluded from WRITABLE_TABS at the bottom
@@ -265,7 +265,7 @@ export async function POST(req: NextRequest) {
       for (const b of arr) o[b.label] = b.share;
       return o;
     };
-    // Whitelist + cap each top_post so a tampered Claude reply (or a curious
+    // Whitelist + cap each top_post so a tampered ChatGPT Work reply (or a curious
     // customer poking the network tab) cannot land megabytes of arbitrary
     // jsonb into the table via the service-role write path. Each field has
     // a fixed type + a length cap, and any unknown key is dropped on the
@@ -357,7 +357,7 @@ export async function POST(req: NextRequest) {
       hook_type_mix: toMixObject(hookBreakdown),
     };
 
-    // Carry the original vault scrape timestamp through if Claude echoed it
+    // Carry the original vault scrape timestamp through if ChatGPT Work echoed it
     // back. Without this, the row's `scraped_at` defaults to NOW() and the
     // UI reads "Last scraped: just now" even though the underlying posts
     // came from a scrape that ran days ago. Validate as an ISO date string;

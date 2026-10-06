@@ -2,7 +2,7 @@
  * Prompt builders.
  *
  * Every empty-state, every Strategy/Drafts/Performance row that asks the user
- * to "run Claude on this" calls a builder from this file. A builder:
+ * to "run ChatGPT Work on this" calls a builder from this file. A builder:
  *
  *   1. Fetches the freshest data the prompt needs (vault posts, strategy,
  *      performance snapshot).
@@ -11,7 +11,7 @@
  *   3. Splices the fetched data into a fenced ```DATA``` block.
  *
  * The customer never sees this code. They click a button. We hand them a
- * single text blob to paste into claude.ai.
+ * single text blob to paste into ChatGPT Work.
  *
  * NOTE: Phase 1 ships with placeholder prompt bodies. Phase 2 replaces every
  * `BODY_*` constant with the full 2-3 page "fat" prompt that has the
@@ -76,7 +76,7 @@ async function fetchVault(): Promise<{ posts: VaultPost[]; scraped_at: string | 
  * when no scrape has run yet. Use for prompts that can still produce useful
  * output without scraped data (drafting a caption from voice + trigger
  * triplet + topic alone). Avoids the "Vault is empty" wall that blocks the
- * customer from using Claude before they've ever scraped.
+ * customer from using ChatGPT Work before they've ever scraped.
  */
 async function fetchVaultSafe(): Promise<{ posts: VaultPost[]; scraped_at: string | null }> {
   try {
@@ -126,9 +126,9 @@ function topSelf(posts: VaultPost[], n = 30): VaultPost[] {
 /**
  * Trim a caption to ~1200 chars and add a visible "[…trimmed]" marker.
  *
- * Why mark it: without the marker, Claude can't tell the difference between
+ * Why mark it: without the marker, ChatGPT Work can't tell the difference between
  * a creator who writes 90-word captions and one who writes 900-word captions
- * — both end at 1200 chars in our prompt. The marker tells Claude "there
+ * — both end at 1200 chars in our prompt. The marker tells ChatGPT Work "there
  * was more here, you're not seeing the whole thing" so it doesn't infer
  * fake patterns from a clean cut.
  */
@@ -144,10 +144,10 @@ function competitorPosts(posts: VaultPost[]): VaultPost[] {
 /* ─────────────────────────────────────────────────────────────────────
  * Prompt bodies.
  *
- * These are the "fat" framework-baked versions. Each body teaches Claude
+ * These are the "fat" framework-baked versions. Each body teaches ChatGPT Work
  * exactly what the framework is, what good output looks like, and what
  * common-AI-slop patterns to avoid. The customer pastes the whole thing
- * into claude.ai; the embedded DATA block gives Claude their real posts
+ * into ChatGPT Work; the embedded DATA block gives ChatGPT Work their real posts
  * to work from. The output schema is strict so the answer can be pasted
  * straight back into the dashboard.
  *
@@ -490,7 +490,7 @@ Return JSON only. No prose, no markdown headers. Match this schema exactly. The 
 \`\`\``;
 
 /* ─────────────────────────────────────────────────────────────────────
- * Builders. Each returns a single string ready to paste into Claude.
+ * Builders. Each returns a single string ready to paste into ChatGPT Work.
  * ───────────────────────────────────────────────────────────────────── */
 
 export async function buildPillarsPrompt(): Promise<string> {
@@ -517,9 +517,9 @@ export async function buildVoicePrompt(): Promise<string> {
 
 export async function buildHooksPrompt(): Promise<string> {
   const { posts, scraped_at } = await fetchVault();
-  // Normalize the source field to match the JSON schema we ask Claude to
+  // Normalize the source field to match the JSON schema we ask ChatGPT Work to
   // return ("mine" for the creator's own posts, "@handle" for competitors).
-  // The DB stores "self" but Claude will mirror whatever shape it sees in
+  // The DB stores "self" but ChatGPT Work will mirror whatever shape it sees in
   // the input — so we relabel here and the editor's parser ingests the
   // same vocab on the way back. One word, one meaning, end-to-end.
   const mine = topSelf(posts, 20).map((p) => ({ ...p, source: "mine" }));
@@ -544,7 +544,7 @@ export async function buildCompetitorPrompt(): Promise<string> {
 
 export async function buildPerformanceAnalysisPrompt(): Promise<string> {
   // Performance analysis needs the customer's posts (the thing being analyzed)
-  // AND their strategy pillars (so Claude classifies posts against the SAME
+  // AND their strategy pillars (so ChatGPT Work classifies posts against the SAME
   // taxonomy the rest of the dashboard uses, not an invented one). We use
   // fetchVault here, not fetchVaultSafe — there is no useful analysis without
   // scraped posts, so the EMPTY_VAULT throw correctly nudges the customer to

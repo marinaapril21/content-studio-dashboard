@@ -39,7 +39,7 @@ type VaultData = {
  * Vault tab.
  *
  * The raw scrape data, searchable + filterable. Source for every prompt you
- * paste into Claude (Web, Desktop, or Code). No Claude prompt needed to fill
+ * paste into ChatGPT Work (Web, Desktop, or Code). No ChatGPT Work prompt needed to fill
  * this tab — a successful Apify scrape lands posts here directly.
  */
 export default function Vault() {
@@ -129,7 +129,7 @@ export default function Vault() {
     <TabContainer>
       <TabHeader
         title="Vault"
-        subtitle="The raw scrape. Every post Claude reads when running a prompt lives here, searchable and filterable."
+        subtitle="The raw scrape. Every post ChatGPT Work reads when running a prompt lives here, searchable and filterable."
         scrapedAt={data?.scraped_at}
         onScrapeComplete={load}
       />
@@ -145,7 +145,7 @@ export default function Vault() {
       {!loading && !hasPosts && (
         <EmptyState
           title="Vault is empty"
-          body="Click [Scrape now] above to pull your latest posts + your competitors. Once they land here, every other tab can be filled by copy-pasting a prompt into claude.ai → pasting Claude's reply back."
+          body="Click [Scrape now] above to pull your latest posts + your competitors. Once they land here, every other tab can be filled by copy-pasting a prompt into ChatGPT Work → pasting ChatGPT Work's reply back."
         />
       )}
 

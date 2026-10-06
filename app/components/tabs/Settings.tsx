@@ -13,7 +13,7 @@ import {
 /**
  * Settings tab, v2.
  *
- * Three editable sections (all forms — no "ask Claude Code to update
+ * Three editable sections (all forms — no "ask ChatGPT Work to update
  * config.json" anywhere):
  *   1. Brand identity, editable. Save persists to Supabase via PUT
  *      /api/data?tab=settings. If Supabase is not configured (white-label

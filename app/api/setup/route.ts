@@ -14,7 +14,7 @@ import path from "node:path";
  *     supabaseSqlEditorUrl: string|null,  // deep link to the user's SQL editor
  *   }
  *
- * Why this exists: Claude Web / Claude Desktop users have no terminal and no
+ * Why this exists: ChatGPT Work users have no terminal and no
  * Supabase CLI. The dashboard greets them with empty data on a fresh deploy,
  * and they need a *one-click* path to a populated DB. PostgREST does not allow
  * arbitrary DDL, so true zero-config auto-migrate is impossible without the

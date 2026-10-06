@@ -1,7 +1,7 @@
 /**
  * fenceData.
  *
- * Wraps a raw data payload in a fenced ```LABEL``` block so Claude treats it as
+ * Wraps a raw data payload in a fenced ```LABEL``` block so ChatGPT Work treats it as
  * literal context, not free-form prose to interpret.
  *
  * Lives in a plain `.ts` util (no React, no "use client") so it can be
@@ -16,7 +16,7 @@ export function fenceData(label: string, payload: unknown): string {
 
   // If the body itself contains a run of backticks (e.g. a creator pasted a
   // caption that had ```python in it, or a competitor caption included a
-  // code block), a 3-backtick fence would terminate early and Claude would
+  // code block), a 3-backtick fence would terminate early and ChatGPT Work would
   // read the rest as instructions. We compute the longest backtick run in
   // the body and pick a fence one tick longer — Markdown handles this fine
   // (CommonMark spec § 4.5 "Fenced code blocks").

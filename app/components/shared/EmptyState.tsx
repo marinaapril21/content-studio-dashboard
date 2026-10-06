@@ -8,11 +8,11 @@ interface EmptyStateProps {
   body: string;
   /**
    * The data-injected prompt builder. When provided, EmptyState renders a
-   * primary CopyPromptButton that copies the full text + opens claude.ai
-   * in a new tab. This is the Claude Web / Claude Desktop happy path.
+   * primary CopyPromptButton that copies the full text + opens ChatGPT Work
+   * in a new tab. This is the ChatGPT Work happy path.
    */
   claudePrompt?: () => Promise<string> | string;
-  /** Optional override for the Claude button label. */
+  /** Optional override for the ChatGPT Work button label. */
   claudeButtonLabel?: string;
   /** Optional secondary action (button label + onClick) — used for "Add by hand". */
   actionLabel?: string;
@@ -24,16 +24,16 @@ interface EmptyStateProps {
  *
  * Two intended paths into a tab once it&apos;s empty:
  *
- *   1. Claude path (default & primary): one button → copies the
- *      data-injected prompt + opens claude.ai. The user pastes, gets a
+ *   1. ChatGPT Work path (default & primary): one button → copies the
+ *      data-injected prompt + opens ChatGPT Work. The user pastes, gets a
  *      structured reply, pastes the reply back into the relevant editor.
  *
  *   2. Hand path: secondary button opens the section&apos;s inline editor so
- *      they can type their first row without touching Claude at all.
+ *      they can type their first row without touching ChatGPT Work at all.
  *
  * The customer never has to install a CLI, never has to find a file in their
- * GitHub fork, never has to know what &ldquo;Claude Code&rdquo; is. Everything
- * needed for Claude lives inside the button above — the prompt is built with
+ * GitHub fork, never has to know what &ldquo;ChatGPT Work&rdquo; is. Everything
+ * needed for ChatGPT Work lives inside the button above — the prompt is built with
  * their data baked in, and the round-trip back lands in the editor on this
  * same tab.
  */
@@ -82,7 +82,7 @@ export default function EmptyState({
       </p>
 
       {/* Visible / copyable / editable fat prompt FIRST — the customer
-          READS what would go into Claude before they decide to click the
+          READS what would go into ChatGPT Work before they decide to click the
           button. Thessa's UX note: "de prompt boven de claude knop, dat is
           de volgorde waarin ze ook werkt". Opens by default so the prompt
           is the primary visible content of the empty state. */}
@@ -96,9 +96,9 @@ export default function EmptyState({
         </div>
       )}
 
-      {/* Then the CTAs below the prompt. The Claude button copies the same
-          text the customer just read and opens claude.ai. The hand-action
-          button (when present) is the "skip Claude, type it myself" path. */}
+      {/* Then the CTAs below the prompt. The ChatGPT Work button copies the same
+          text the customer just read and opens ChatGPT Work. The hand-action
+          button (when present) is the "skip ChatGPT Work, type it myself" path. */}
       {(hasClaudeButton || hasHandButton) && (
         <div
           style={{
@@ -149,8 +149,8 @@ export default function EmptyState({
         }}
       >
         {hasClaudeButton
-          ? "Click → claude.ai opens with the prompt already in your clipboard. Paste, wait for the reply, paste the reply back into this tab. No CLI, no setup."
-          : "Open claude.ai, paste this prompt, then paste Claude’s reply back into the editor here."}
+          ? "Copy the prompt, paste it into your ChatGPT Work chat, then paste the JSON reply back into this tab."
+          : "Open ChatGPT Work, paste this prompt, then paste ChatGPT Work’s reply back into the editor here."}
       </p>
     </div>
   );
