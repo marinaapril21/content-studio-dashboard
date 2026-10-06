@@ -75,8 +75,17 @@ async function poll(job: Job) {
 }
 Deno.serve(async (req: Request) => {
   if (req.method !== 'POST') return reply({ ok: false, errors: ['Method not allowed.'] }, 405);
-  if (req.headers.get('authorization') !== `Bearer ${env('SUPABASE_SERVICE_ROLE_KEY').trim()}`)
-    return reply({ ok: false, errors: ['Unauthorized.'] }, 401);
+  // Supabase's gateway verifies the JWT signature (verify_jwt MUST stay true).
+  // Valid service-role JWTs may differ byte-for-byte from the runtime's key.
+  // Check their verified role/project instead, then require the separate secret.
+  let claims: { role?: string; ref?: string } = {};
+  try {
+    const payload = (req.headers.get('authorization') ?? '').replace(/^Bearer /i, '').split('.')[1];
+    claims = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+  } catch { /* invalid tokens are rejected below */ }
+  const project = new URL(env('SUPABASE_URL')).hostname.split('.')[0];
+  if (claims.role !== 'service_role' || claims.ref !== project)
+    return reply({ ok: false, errors: ['Supabase service-role authentication is required.'] }, 401);
   if (!env('FUNCTION_SECRET').trim())
     return reply({ ok: false, errors: ['FUNCTION_SECRET is missing in Supabase.'] }, 503);
   if (req.headers.get('x-function-secret')?.trim() !== env('FUNCTION_SECRET').trim())

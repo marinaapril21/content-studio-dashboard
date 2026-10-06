@@ -8,7 +8,7 @@ const source = fs.readFileSync(new URL('../supabase/functions/content-scraper/in
 const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
 function load(fetcher = () => { throw Error('Unexpected network'); }, secrets = {}) {
   let handler;
-  const context = { exports: {}, Response, Request, AbortSignal, fetch: fetcher,
+  const context = { exports: {}, Response, Request, AbortSignal, URL, atob, fetch: fetcher,
     Deno: { env: { get: key => secrets[key] }, serve: fn => { handler = fn; } } };
   vm.runInNewContext(js, context);
   return { normalize: context.exports.normalizePosts, handler };
@@ -32,7 +32,7 @@ test('hidden metrics stay unknown; collaborative posts use the requested profile
   assert.throws(() => load().normalize([{ error: 'private' }], job), /access error/);
 });
 test('unauthorized callers cannot start a billable run', async () => {
-  const { handler } = load(undefined, { FUNCTION_SECRET: 'test-only', SUPABASE_SERVICE_ROLE_KEY: 'test-key' });
+  const { handler } = load(undefined, { FUNCTION_SECRET: 'test-only', SUPABASE_SERVICE_ROLE_KEY: 'test-key', SUPABASE_URL: 'https://example.test' });
   const res = await handler(new Request('https://example.test', { method: 'POST', body: '{}' }));
   assert.equal(res.status, 401);
 });
@@ -44,7 +44,9 @@ test('active job is resumed without starting another actor', async () => {
     if (url.endsWith('actor-runs/run1')) return Response.json({ data: { status: 'RUNNING' } });
     throw Error('Unexpected request');
   }, { FUNCTION_SECRET: 'test-only', SUPABASE_SERVICE_ROLE_KEY: 'test-key', APIFY_TOKEN: 'test-token', SUPABASE_URL: 'https://example.test' });
-  const res = await handler(new Request('https://example.test', { method: 'POST', headers: { Authorization: 'Bearer test-key', 'x-function-secret': 'test-only' }, body: '{}' }));
+  // Signature verification belongs to the gateway; this unit test covers the role check.
+  const jwt = 'header.' + Buffer.from(JSON.stringify({ role: 'service_role', ref: 'example' })).toString('base64url') + '.signature';
+  const res = await handler(new Request('https://example.test', { method: 'POST', headers: { Authorization: `Bearer ${jwt}`, 'x-function-secret': 'test-only' }, body: '{}' }));
   assert.equal((await res.json()).jobId, 'job1');
   assert.equal(calls.length, 2);
   assert.ok(calls.every(([, method]) => method === 'GET'));

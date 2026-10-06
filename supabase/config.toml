@@ -1,0 +1,2 @@
+[functions.content-scraper]
+verify_jwt = true
