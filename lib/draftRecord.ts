@@ -5,10 +5,20 @@ export function draftToRecord(body: Record<string, unknown>) {
   if (type !== undefined) record.format = type;
   const caption = typeof body.caption === "string" ? body.caption.trim() : "";
   const opening = typeof hook === "string" ? hook.trim() : "";
-  record.caption = opening && !caption.startsWith(opening)
-    ? `${opening}\n\n${caption}`
-    : caption;
+  if (body.caption !== undefined || hook !== undefined) {
+    record.caption = opening && !caption.startsWith(opening)
+      ? (caption ? `${opening}\n\n${caption}` : opening)
+      : caption;
+  }
   return record;
+}
+
+/** Split the stored opening from the body so replacing it does not duplicate it. */
+export function draftCaptionForEditor(caption: string) {
+  const newline = caption.indexOf("\n");
+  return newline < 0
+    ? { hook: caption, caption: "" }
+    : { hook: caption.slice(0, newline).replace(/\r$/, ""), caption: caption.slice(newline + 1).replace(/^\r?\n/, "") };
 }
 
 export function draftFromRecord(row: Record<string, unknown>) {

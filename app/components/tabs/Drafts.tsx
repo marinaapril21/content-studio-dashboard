@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { draftCaptionForEditor } from "../../../lib/draftRecord";
 import { Plus, Copy, Check, Trash2, List, Calendar as CalendarIcon, ChevronLeft, ChevronRight, AlertCircle, Star, RefreshCw } from "lucide-react";
 import TabContainer from "../shared/TabContainer";
 import TabHeader from "../shared/TabHeader";
@@ -92,9 +93,38 @@ export default function Drafts() {
   const [weekOffset, setWeekOffset] = useState(0);
 
   const [addOpen, setAddOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState<NewDraft>(emptyDraft());
 
+  useEffect(() => {
+    if (addOpen) editorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [addOpen, editingId]);
+
+  function closeEditor() {
+    setAddOpen(false);
+    setEditingId(null);
+    setSaveError(null);
+    setDraft(emptyDraft());
+  }
+
+  function editDraft(item: Draft) {
+    setEditingId(item.id);
+    setSaveError(null);
+    setDraft({
+      ...draftCaptionForEditor(item.caption),
+      type: item.type,
+      trigger_word: item.trigger_word,
+      slide_count: item.slide_count,
+      notes: item.notes ?? "",
+      status: item.status,
+      scheduled_for: item.scheduled_for,
+    });
+    setAddOpen(true);
+  }
+
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copyError, setCopyError] = useState<string | null>(null);
 
   // Legacy state. Index lets the per-card render decide in O(1) whether a
   // posted draft is already marked. legacyOnly chip filters to those rows
@@ -208,18 +238,21 @@ export default function Drafts() {
   }, []);
 
   async function createDraft() {
-    if (!draft.caption.trim()) return;
+    if (!draft.caption.trim() && !draft.hook.trim()) return;
     setSaving(true);
     setSaveError(null);
     try {
       const res = await fetch("/api/data?tab=drafts", {
-        method: "POST",
+        method: editingId ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(draft),
+        body: JSON.stringify(editingId ? {
+          id: editingId, hook: draft.hook, caption: draft.caption,
+          type: draft.type, trigger_word: draft.trigger_word,
+          slide_count: draft.slide_count, notes: draft.notes,
+        } : draft),
       });
       if (res.ok) {
-        setDraft(emptyDraft());
-        setAddOpen(false);
+        closeEditor();
         load();
       } else {
         setSaveError("Nacrt nije spremljen. Tvoj tekst je ostao u obrascu. Pokušaj ponovno.");
@@ -256,12 +289,15 @@ export default function Drafts() {
     }
   }
 
-  function copyCaption(d: Draft) {
-    if (!navigator.clipboard) return;
-    navigator.clipboard.writeText(d.caption).then(() => {
-      setCopiedId(d.id);
-      setTimeout(() => setCopiedId(null), 1500);
-    });
+  async function copyDraftText(text: string, key: string) {
+    setCopyError(null);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(key);
+      setTimeout(() => setCopiedId(current => current === key ? null : current), 1500);
+    } catch {
+      setCopyError("Kopiranje nije uspjelo. Označi tekst i kopiraj ga ručno.");
+    }
   }
 
   const counts = useMemo(
@@ -417,8 +453,10 @@ export default function Drafts() {
           </div>
           <button
             onClick={() => {
-              if (addOpen) setAddOpen(false);
+              if (addOpen) closeEditor();
               else {
+                setEditingId(null);
+                setSaveError(null);
                 setDraft(emptyDraft());
                 setAddOpen(true);
               }
@@ -485,9 +523,12 @@ export default function Drafts() {
         </div>
       )}
 
+      {copyError && <p role="alert" style={{ color: "#8a3219" }}>{copyError}</p>}
       {/* Add form */}
       {addOpen && (
         <div
+          ref={editorRef}
+          key={editingId ?? "new"}
           style={{
             background: "#fff",
             border: "1px solid var(--color-burgundy)",
@@ -507,7 +548,7 @@ export default function Drafts() {
               fontWeight: 700,
             }}
           >
-            New draft
+            {editingId ? "Uredi nacrt" : "New draft"}
           </p>
 
           {/* Visible fat prompt FIRST — the writer reads what would go into
@@ -520,7 +561,7 @@ export default function Drafts() {
             <FatPromptPreview
               buildPrompt={() => buildDraftCaptionPrompt("", selectedTrigger ?? undefined)}
               label="Show the full ChatGPT Work prompt (read + copy)"
-              defaultOpen
+              defaultOpen={!editingId}
               cacheKey={selectedTrigger?.word ?? "none"}
             />
           </div>
@@ -618,7 +659,7 @@ export default function Drafts() {
                 ...d,
                 hook: first.hook,
                 caption: first.cta ? `${first.body}\n\n${first.cta}` : first.body,
-                notes: first.notes ?? "",
+                notes: first.notes ?? d.notes ?? "",
                 trigger_word: inferDraftTrigger(`${first.hook}\n${first.body}\n${first.cta ?? ""}`, triggers.map(t => t.word)) ?? d.trigger_word,
                 slide_count:
                   first.format && first.format.toLowerCase().includes("carousel")
@@ -665,13 +706,7 @@ export default function Drafts() {
           />
 
           <div
-            style={{
-              display: "flex",
-              gap: "0.5rem",
-              marginTop: "0.75rem",
-              flexWrap: "wrap",
-              alignItems: "center",
-            }}
+            style={{ display: "flex", gap: "0.5rem", marginTop: "0.75rem", flexWrap: "wrap", alignItems: "center" }}
           >
             <select
               value={draft.type}
@@ -716,7 +751,7 @@ export default function Drafts() {
               writer can move straight from "write" to "scheduled" without a
               second click. The input value is the local datetime; we
               round-trip through a Date to get an ISO string for the API. */}
-          <div
+          {!editingId && <div
             style={{
               display: "flex",
               gap: "0.5rem",
@@ -770,7 +805,7 @@ export default function Drafts() {
             <span style={{ fontSize: "0.7rem", color: "var(--color-text-dim)" }}>
               Optional — fill in to save straight to the calendar.
             </span>
-          </div>
+          </div>}
 
           {/* Trigger context block — surfaces the offer/topic/promise tied to
               the picked trigger so the writer keeps the post on-topic + the
@@ -829,7 +864,7 @@ export default function Drafts() {
           <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem" }}>
             <button
               onClick={createDraft}
-              disabled={saving || !draft.caption.trim()}
+              disabled={saving || (!draft.caption.trim() && !draft.hook.trim())}
               style={{
                 background: "var(--color-burgundy)",
                 border: "none",
@@ -840,13 +875,13 @@ export default function Drafts() {
                 cursor: "pointer",
                 fontFamily: "var(--font-body)",
                 fontWeight: 600,
-                opacity: saving || !draft.caption.trim() ? 0.6 : 1,
+                opacity: saving || (!draft.caption.trim() && !draft.hook.trim()) ? 0.6 : 1,
               }}
             >
-              {saving ? "Saving..." : "Save draft"}
+              {saving ? "Saving..." : editingId ? "Spremi promjene" : "Save draft"}
             </button>
-            <button onClick={() => setAddOpen(false)} style={ghostBtn}>
-              Cancel
+            <button disabled={saving} onClick={closeEditor} style={ghostBtn}>
+              {editingId ? "Odustani" : "Cancel"}
             </button>
           </div>
         </div>
@@ -868,6 +903,7 @@ export default function Drafts() {
           claudeButtonLabel="Draft a caption with ChatGPT Work"
           actionLabel="Write one by hand"
           onAction={() => {
+            setEditingId(null);
             setDraft(emptyDraft());
             setAddOpen(true);
           }}
@@ -967,22 +1003,18 @@ export default function Drafts() {
               )}
             </div>
 
-            {d.hook && (
-              <p style={{ fontFamily: "var(--font-header)", fontSize: "1.05rem", marginBottom: "0.45rem", lineHeight: 1.35 }}>
-                {d.hook}
-              </p>
-            )}
-            <p
-              style={{
-                fontSize: "0.86rem",
-                lineHeight: 1.55,
-                whiteSpace: "pre-wrap",
-                color: "var(--color-text)",
-                marginBottom: "0.85rem",
-              }}
-            >
-              {d.caption}
-            </p>
+            <DraftTextSection
+              label="Hook"
+              text={draftCaptionForEditor(d.caption).hook}
+              copied={copiedId === `${d.id}:hook`}
+              onCopy={() => copyDraftText(draftCaptionForEditor(d.caption).hook, `${d.id}:hook`)}
+            />
+            <DraftTextSection
+              label="Caption"
+              text={draftCaptionForEditor(d.caption).caption}
+              copied={copiedId === `${d.id}:caption`}
+              onCopy={() => copyDraftText(draftCaptionForEditor(d.caption).caption, `${d.id}:caption`)}
+            />
 
             {d.notes && !isRecycledNotes(d.notes) && (
               <details style={{ marginBottom: "1rem", fontSize: "0.84rem" }}>
@@ -1028,10 +1060,7 @@ export default function Drafts() {
                   Reopen
                 </button>
               )}
-              <button onClick={() => copyCaption(d)} style={ghostBtn}>
-                <Copy size={12} strokeWidth={1.8} style={{ marginRight: "0.3rem" }} />
-                {copiedId === d.id ? "Copied!" : "Copy"}
-              </button>
+              <button disabled={saving} onClick={() => editDraft(d)} style={ghostBtn}>Uredi</button>
               {/* Mark-as-legacy only on posted drafts. Marking a still-draft
                   row makes no sense (it hasn't been a winner yet — there's
                   no performance to memorialise), and posted is also the
@@ -1598,6 +1627,33 @@ function Tag({
 }
 
 /* ─────────── ChatGPT Work reply parser (caption options) ─────────── */
+
+function DraftTextSection({ label, text, copied, onCopy }: {
+  label: "Hook" | "Caption";
+  text: string;
+  copied: boolean;
+  onCopy: () => void;
+}) {
+  return (
+    <section aria-label={label} style={{ marginBottom: "0.85rem" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
+        <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "var(--color-text-dim)", textTransform: "uppercase" }}>{label}</span>
+        <button
+          type="button"
+          aria-label={`Kopiraj ${label.toLowerCase()}`}
+          title={copied ? "Kopirano" : `Kopiraj ${label.toLowerCase()}`}
+          disabled={!text}
+          onClick={onCopy}
+          style={{ ...ghostBtn, padding: "0.4rem", display: "inline-flex", opacity: text ? 1 : 0.4 }}
+        >
+          {copied ? <Check size={16} /> : <Copy size={16} />}
+        </button>
+      </div>
+      <span role="status" style={{ fontSize: "0.7rem", color: "var(--color-burgundy)" }}>{copied ? "Kopirano" : ""}</span>
+      <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.55, fontSize: label === "Hook" ? "1.05rem" : "0.86rem", fontFamily: label === "Hook" ? "var(--font-header)" : undefined }}>{text || "Nema zasebnog opisa."}</p>
+    </section>
+  );
+}
 
 type ParsedDraftOption = {
   hook: string;

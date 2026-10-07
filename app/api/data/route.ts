@@ -563,9 +563,17 @@ export async function PATCH(req: NextRequest) {
     updates.updated_at = new Date().toISOString();
   }
 
+  if (table === "drafts" && updates.hook !== undefined && updates.caption === undefined) {
+    return NextResponse.json({ error: "Include caption when editing the hook" }, { status: 400 });
+  }
+  const record = table === "drafts" ? draftToRecord(updates) : updates;
+  if (table === "drafts" && record.caption !== undefined && !String(record.caption).trim()) {
+    return NextResponse.json({ error: "Caption cannot be empty" }, { status: 400 });
+  }
+
   const { data, error } = await supabase
     .from(table)
-    .update(updates)
+    .update(record)
     .eq("id", id)
     .select()
     .single();
